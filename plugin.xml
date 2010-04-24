@@ -1,0 +1,156 @@
+<!DOCTYPE plugin SYSTEM "../../libs/devblocks/plugin.dtd">
+<plugin>
+	<id>cerberusweb.iphone</id>
+	<name>[Cerb5] iPhone UI (Experimental)</name>
+	<description>iPhone mobile interface. This is accessed by appending /iphone to your helpdesk URL</description>
+	<author>WebGroup Media, LLC.</author>
+	<revision>0</revision>
+	<link>http://wiki.cerb4.com/wiki/New_Changes#iPhone_Mobile_Interface</link>
+	
+    <!-- Exported Classes -->
+    
+    <class_loader>
+		<file path="api/App.php">
+		    <class name="Extension_iPhoneTicketDisplayTab" />
+			<class name="Extension_iPhoneActivityPage" />
+		</file>
+	</class_loader>
+	
+	<extensions>
+		<extension point="devblocks.controller">
+			<id>cerberusweb.controller.iphone</id>
+			<name>iPhone Controller</name>
+			<class>
+				<file>api/App.php</file>
+				<name>ChiPhonePageController</name>
+			</class>
+			<params>
+				<param key="uri" value="iphone" />
+			</params>
+		</extension>
+
+		<extension point="cerberusweb.iphone.page">
+			<id>iphone.home</id>
+			<name>iPhone Home Page</name>
+			<class>
+				<file>api/App.php</file>
+				<name>ChiPhoneHomePage</name>
+			</class>
+			<params>
+				<param key="uri" value="home" />
+			</params>
+		</extension>				
+		<extension point="cerberusweb.iphone.page">
+			<id>iphone.login</id>
+			<name>iPhone Login Page</name>
+			<class>
+				<file>api/App.php</file>
+				<name>ChiPhoneLoginPage</name>
+			</class>
+			<params>
+				<param key="uri" value="login" />
+			</params>
+		</extension>
+        <extension point="cerberusweb.iphone.page">
+			<id>iphone.tickets</id>
+			<name>iPhone Tickets Page</name>
+			<class>
+				<file>api/App.php</file>
+				<name>ChiPhoneTicketsPage</name>
+			</class>
+			<params>
+				<param key="uri" value="tickets" />
+			</params>
+		</extension>
+        <extension point="cerberusweb.iphone.page">
+			<id>iphone.activity</id>
+			<name>iPhone Activity Page</name>
+			<class>
+				<file>api/App.php</file>
+				<name>ChiPhoneActivityPage</name>
+			</class>
+			<params>
+				<param key="uri" value="activity" />
+			</params>
+		</extension>
+        <extension point="cerberusweb.iphone.page">
+			<id>iphone.research</id>
+			<name>iPhone Research Page</name>
+			<class>
+				<file>api/App.php</file>
+				<name>ChiPhoneResearchPage</name>
+			</class>
+			<params>
+				<param key="uri" value="research" />
+			</params>
+		</extension>
+        
+        <!-- Ticket Display Tabs -->
+        
+        <extension point="cerberusweb.iphone.ticket.display.tab">
+			<id>conversation.iphone.tickets.display</id>
+			<name>Conversation Tab</name>
+			<class>
+				<file>api/App.php</file>
+				<name>ChConversationiPhoneTicketDisplayTab</name>
+			</class>
+			<params>
+				<param key="uri" value="conversation" />
+				<param key="title" value="Conversation" />
+			</params>
+		</extension>
+        <extension point="cerberusweb.iphone.ticket.display.tab">
+			<id>properties.iphone.tickets.display</id>
+			<name>Properties Tab</name>
+			<class>
+				<file>api/App.php</file>
+				<name>ChPropertiesiPhoneTicketDisplayTab</name>
+			</class>
+			<params>
+				<param key="uri" value="properties" />
+				<param key="title" value="Properties" />
+			</params>
+		</extension>
+        <extension point="cerberusweb.iphone.ticket.display.tab">
+			<id>other.iphone.tickets.display</id>
+			<name>Other Tab</name>
+			<class>
+				<file>api/App.php</file>
+				<name>ChOtheriPhoneTicketDisplayTab</name>
+			</class>
+			<params>
+				<param key="uri" value="other" />
+				<param key="title" value="Other" />
+			</params>
+		</extension>
+        
+        <!-- Activity Pages -->
+
+        <extension point="cerberusweb.iphone.activity.page">
+			<id>tasks.iphone.activity.page</id>
+			<name>Tasks</name>
+			<class>
+				<file>api/App.php</file>
+				<name>ChTasksiPhoneActivityPage</name>
+			</class>
+			<params>
+				<param key="uri" value="tasks" />
+				<param key="title" value="Tasks" />
+			</params>
+		</extension>
+                 
+        <extension point="cerberusweb.iphone.activity.page">
+			<id>iphone.activity.timetracking</id>
+			<name>Time Tracking Activity Tab</name>
+			<class>
+				<file>api/App.php</file>
+				<name>ChTimeTrackingiPhoneActivityPage</name>
+			</class>
+			<params>
+				<param key="uri" value="timetracking" />
+				<param key="title" value="Time Tracking" />
+			</params>
+		</extension>
+        
+	</extensions>
+</plugin>
