@@ -287,7 +287,8 @@ class ChiPhoneLoginPage extends CerberusPageExtension {
 		DAO_Worker::logActivity(new Model_Activity(null));
 		
 		$session->clear();
-		DevblocksPlatform::redirect(DevblocksHttpResponse(array('iphone', 'login')));
+//		DevblocksHttpResponse::
+		DevblocksPlatform::redirect(new DevblocksHttpResponse(array('iphone', 'login')));
 	}
 	
 	
@@ -518,15 +519,6 @@ abstract class Extension_iPhoneTicketDisplayTab extends DevblocksExtension {
 	function saveTab() {}
 };
 
-abstract class Extension_iPhoneActivityPage extends DevblocksExtension {
-	function __construct($manifest) {
-		parent::__construct($manifest);
-	}
-	
-	function showTab() {}
-	function saveTab() {}
-};
-
 abstract class Extension_iPhoneOpportunityDisplayTab extends DevblocksExtension {
 	function __construct($manifest) {
 		parent::__construct($manifest);
@@ -688,6 +680,13 @@ class ChPropertiesiPhoneTicketDisplayTab extends Extension_iPhoneTicketDisplayTa
 	public function __construct($manifest) {
 		$this->DevblocksExtension($manifest);
 		$this->_TPL_PATH = dirname(dirname(__FILE__)) . '/templates/';
+		
+		$custom_fields = DAO_CustomField::getBySource(ChCustomFieldSource_Ticket::ID);
+		$tpl->assign('custom_fields', $custom_fields);
+		
+		$custom_field_values = DAO_CustomFieldValue::getValuesBySourceIds(ChCustomFieldSource_Ticket::ID, $id);
+		if(isset($custom_field_values[$id]))
+			$tpl->assign('custom_field_values', $custom_field_values[$id]);
 	}
 	
 	function showTab() {
@@ -712,7 +711,7 @@ class ChOtheriPhoneTicketDisplayTab extends Extension_iPhoneTicketDisplayTab {
 	}
 };
 
-class ChTasksiPhoneActivityPage extends Extension_iPhoneActivityPage {
+class ChiPhoneTasksPage extends CerberusPageExtension {
 	private $_TPL_PATH = '';
 	
 	public function __construct($manifest) {
@@ -726,5 +725,275 @@ class ChTasksiPhoneActivityPage extends Extension_iPhoneActivityPage {
 		$tpl->display('file:' . $this->_TPL_PATH . 'activity/tasks.tpl');
 	}
 };
+
+if(class_exists('DAO_CrmOpportunity', true)):
+	class ChiPhoneOpportunitiesPage extends CerberusPageExtension {
+		private $_TPL_PATH = '';
+		
+		public function __construct($manifest) {
+			$this->DevblocksExtension($manifest);
+			$this->_TPL_PATH = dirname(dirname(__FILE__)) . '/templates/opportunities/';
+		}
+		
+		function render() {
+			$tpl = DevblocksPlatform::getTemplateService();
+			$response = DevblocksPlatform::getHttpResponse();
+			// are we displaying the main home page?
+				
+			$path = $response->path;
+			array_shift($path); // iphone
+//			array_shift($path); // activity
+			array_shift($path); // opportunities
+			$action = array_shift($path); // current action
+			
+			$id = array_shift($path); // opp id
+			
+			switch($action) {
+				case 'display':
+					$tab_manifests = DevblocksPlatform::getExtensions('cerberusweb.iphone.opportunity.display.tab', false);
+					
+					$tpl->assign('tab_manifests', $tab_manifests);
+					$tpl->assign('opp_id', $id);
+					$selected_tab = array_shift($path);
+					$selected_tab = null != $selected_tab ? $selected_tab : 'notes'; // tab
+					
+					foreach($tab_manifests as $tab_mft)
+					{
+						if($selected_tab==$tab_mft->params['uri']) {
+							$tab = DevblocksPlatform::getExtension($tab_mft->id, true);
+						}
+					}
+					
+					$tpl->assign('tab', $tab);
+					$tpl->assign('selected_tab', $selected_tab);
+					
+					$opp = DAO_CrmOpportunity::get($id);
+					$tpl->assign('opp', $opp);
+					
+					$address = DAO_Address::get($opp->primary_email_id);
+					$tpl->assign('address', $address);
+					
+					$workers = DAO_Worker::getAllActive();
+					$tpl->assign('workers', $workers);
+					
+					$tpl->display('file:' . $this->_TPL_PATH . 'display.tpl');
+					break;
+				case null:
+					$opportunities = DAO_CrmOpportunity::getWhere();
+					$tpl->assign('opportunities', $opportunities);
+					$tpl->display('file:' . $this->_TPL_PATH . 'home.tpl');
+					break;				
+				default:
+					break;
+			}
+		}
+	};
+
+	class ChNotesiPhoneOpportunityDisplayTab extends Extension_iPhoneOpportunityDisplayTab {
+		private $_TPL_PATH = '';
+		
+		public function __construct($manifest) {
+			$this->DevblocksExtension($manifest);
+			$this->_TPL_PATH = dirname(dirname(__FILE__)) . '/templates/opportunities/';
+		}
+		
+		function showTab() {
+			$tpl = DevblocksPlatform::getTemplateService();
+			$response = DevblocksPlatform::getHttpResponse();
+			// are we displaying the main home page?
+				
+			$path = $response->path;
+			array_shift($path); // iphone
+//			array_shift($path); // activity
+			array_shift($path); // opportunities
+			$action = array_shift($path); // current action
+			
+			$id = array_shift($path); // opp id
+	
+			list($notes, $null) = DAO_Note::search(
+				array(
+					new DevblocksSearchCriteria(SearchFields_Note::SOURCE_EXT_ID,'=',CrmNotesSource_Opportunity::ID),
+					new DevblocksSearchCriteria(SearchFields_Note::SOURCE_ID,'=',$id),
+				),
+				25,
+				0,
+				DAO_Note::CREATED,
+				false,
+				false
+			);
+//			var_dump($notes);
+			$tpl->assign('notes', $notes);
+			$tpl->display('file:' . $this->_TPL_PATH . 'display/notes.tpl');
+		}
+	};
+	
+	class ChPropertiesiPhoneOpportunityDisplayTab extends Extension_iPhoneOpportunityDisplayTab {
+		private $_TPL_PATH = '';
+		
+		public function __construct($manifest) {
+			$this->DevblocksExtension($manifest);
+			$this->_TPL_PATH = dirname(dirname(__FILE__)) . '/templates/opportunities/';
+		}
+		
+		function showTab() {
+			$tpl = DevblocksPlatform::getTemplateService();
+			$response = DevblocksPlatform::getHttpResponse();
+			// are we displaying the main home page?
+			
+			$path = $response->path;
+			array_shift($path); // iphone
+//			array_shift($path); // activity
+			array_shift($path); // opportunities
+			$action = array_shift($path); // current action
+			$id = array_shift($path); // opp id
+			
+			$custom_fields = DAO_CustomField::getBySource(CrmCustomFieldSource_Opportunity::ID);
+			$tpl->assign('custom_fields', $custom_fields);
+			
+			$custom_field_values = DAO_CustomFieldValue::getValuesBySourceIds(CrmCustomFieldSource_Opportunity::ID, $id);
+			if(isset($custom_field_values[$id]))
+				$tpl->assign('custom_field_values', $custom_field_values[$id]);
+			
+			$tpl->display('file:' . $this->_TPL_PATH . 'display/properties.tpl');
+		}
+	};
+	
+	class ChOtheriPhoneOpportunityDisplayTab extends Extension_iPhoneOpportunityDisplayTab {
+		private $_TPL_PATH = '';
+		
+		public function __construct($manifest) {
+			$this->DevblocksExtension($manifest);
+			$this->_TPL_PATH = dirname(dirname(__FILE__)) . '/templates/opportunities/';
+		}
+		
+		function showTab() {
+			$tpl = DevblocksPlatform::getTemplateService();
+			$response = DevblocksPlatform::getHttpResponse();
+			// are we displaying the main home page?
+			
+			$path = $response->path;
+			
+			array_shift($path); // iphone
+//			array_shift($path); // activity
+			array_shift($path); // opportunities
+			$action = array_shift($path); // current action
+			$id = array_shift($path); // opp id
+			array_shift($path); // other
+			$sub_tab = array_shift($path); // sub tab
+			
+			$tab_manifests = DevblocksPlatform::getExtensions('cerberusweb.iphone.opportunity.other.tab', false);
+			$tpl->assign('tab_manifests', $tab_manifests);
+			
+//			var_dump($tab_manifests);
+			var_dump($sub_tab);
+			$tpl->assign('opp_id', $id);
+						
+			foreach($tab_manifests as $tab_mft)
+			{
+				if($sub_tab==$tab_mft->params['uri']) {
+					$tab = DevblocksPlatform::getExtension($tab_mft->id, true);
+				}
+			}
+			
+			$tpl->assign('sub_tab', $tab);	
+			$tpl->display('file:' . $this->_TPL_PATH . 'display/other.tpl');
+		}
+	};
+	
+	class ChTasksiPhoneOpportunityDisplayTab extends Extension_iPhoneOpportunityDisplayTab {
+		private $_TPL_PATH = '';
+		
+		public function __construct($manifest) {
+			$this->DevblocksExtension($manifest);
+			$this->_TPL_PATH = dirname(dirname(__FILE__)) . '/templates/opportunities/';
+		}
+		
+		function showTab() {
+			$tpl = DevblocksPlatform::getTemplateService();
+			$response = DevblocksPlatform::getHttpResponse();
+			// are we displaying the main home page?
+			
+			$path = $response->path;
+			
+			array_shift($path); // iphone
+			array_shift($path); // opportunities
+			$action = array_shift($path); // current action (display)
+			$id = array_shift($path); // opp id
+			array_shift($path); // other
+			$sub_tab = array_shift($path); // tasks
+//			DAO_Ticket
+			
+			$tpl->display('file:' . $this->_TPL_PATH . 'display/sub_tabs/tasks.tpl');
+		}
+	};
+	
+	class ChMailHistoryiPhoneOpportunityDisplayTab extends Extension_iPhoneOpportunityDisplayTab {
+		private $_TPL_PATH = '';
+		
+		public function __construct($manifest) {
+			$this->DevblocksExtension($manifest);
+			$this->_TPL_PATH = dirname(dirname(__FILE__)) . '/templates/opportunities/';
+		}
+		
+		function showTab() {
+			$tpl = DevblocksPlatform::getTemplateService();
+			$response = DevblocksPlatform::getHttpResponse();
+			// are we displaying the main home page?
+			
+			$path = $response->path;
+			
+			array_shift($path); // iphone
+			array_shift($path); // opportunities
+			$action = array_shift($path); // current action (display)
+			$id = array_shift($path); // opp id
+			array_shift($path); // other
+			$sub_tab = array_shift($path); // tasks
+			
+			$address = $tpl->getVariable('address')->value;
+			var_dump(DAO_Address::getByEmail($address->email));
+//			$criteria = new DevblocksSearchCriteria(SearchFields_Ticket::REQUESTER_ADDRESS, '=', $address->email);
+			var_dump($criteria);
+			
+			$tpl->display('file:' . $this->_TPL_PATH . 'display/sub_tabs/tasks.tpl');
+		}
+	};
+	
+endif;
+
+if(class_exists('DAO_FeedbackEntry', true)):
+	class ChiPhoneFeedbackPage extends CerberusPageExtension {
+		private $_TPL_PATH = '';
+		
+		public function __construct($manifest) {
+			$this->DevblocksExtension($manifest);
+			$this->_TPL_PATH = dirname(dirname(__FILE__)) . '/templates/';
+		}
+		
+		function render() {
+			$tpl = DevblocksPlatform::getTemplateService();
+			$feedback = DAO_FeedbackEntry::getWhere();
+//			var_dump($feedback);
+			$tpl->assign('feedbackentries', $feedback);
+			$tpl->display('file:' . $this->_TPL_PATH . 'activity/feedback.tpl');
+		}
+	};
+endif;
+
+if(class_exists('DAO_TimeTrackingActivity')):
+	class ChiPhoneTimeTrackingPage extends CerberusPageExtension {
+		private $_TPL_PATH = '';
+		
+		public function __construct($manifest) {
+			$this->DevblocksExtension($manifest);
+			$this->_TPL_PATH = dirname(dirname(__FILE__)) . '/templates/';
+		}
+		
+		function render() {
+			$tpl = DevblocksPlatform::getTemplateService();
+			
+			$tpl->display('file:' . $this->_TPL_PATH . 'activity/timetracking.tpl');
+		}
+	};
+endif;
 
 ?>
