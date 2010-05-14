@@ -123,6 +123,18 @@
 				<param key="title" value="Other" />
 			</params>
 		</extension>
+        <extension point="cerberusweb.iphone.ticket.other.tab">
+			<id>mailhistory.other.iphone.ticket</id>
+			<name>Mail History Tab</name>
+			<class>
+				<file>api/App.php</file>
+				<name>ChMailHistoryiPhoneTicketDisplayTab</name>
+			</class>
+			<params>
+				<param key="uri" value="mailhistory" />
+				<param key="title" value="Mail History" />
+			</params>
+		</extension>
         
         <!-- Activity Pages -->
         

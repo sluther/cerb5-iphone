@@ -7,11 +7,11 @@
 </div>
 <div id="tributton">
 	<div class="links">
-		{foreach from=$tab_manifests item=tab_manifest}<a {if $selected_tab==$tab_manifest->params.uri}id="pressed"{/if}href="{devblocks_url}{/devblocks_url}iphone/tickets/display/{$ticket_id}/{$tab_manifest->params.uri}">{$tab_manifest->params.title}</a>{/foreach}
+		{foreach from=$tab_manifests item=tab_manifest}<a {if $selected_tab==$tab_manifest->params.uri}id="pressed"{/if}href="{devblocks_url}{/devblocks_url}iphone/tickets/display/{$ticket->id}/{$tab_manifest->params.uri}">{$tab_manifest->params.title}</a>{/foreach}
 
 	</div>
 </div>
 <div id="content">
-	<span class="graytitle">Ticket CTY-53517-594</span>
+	<span class="graytitle">Ticket #{$ticket->mask}</span>
 	{$tab->showTab()}
 </div>

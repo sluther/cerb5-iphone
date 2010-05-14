@@ -1,3 +1,5 @@
+/* @override http://localhost/cerb/index.php/resource/cerberusweb.iphone/Framework/css/developer-style.css */
+
 /*iWebKit css 5.04 by Christopher Plieger*/
 body {
 	position: relative;
@@ -572,8 +574,8 @@ li:last-child.store .image, .store:last-child a {
 }
 .store .name {
 	position: absolute;
-	left: 95px;
-	top: 35px;
+	left: 15px;
+	top: 15px;
 }
 .applist .name {
 	position: absolute;
@@ -581,7 +583,7 @@ li:last-child.store .image, .store:last-child a {
 	left: 80px;
 	text-shadow: #eeeeee 0 1px 0;
 }
-.store .comment, .list .withimage .comment, .applist .comment, .applist .price {
+.store .comment, .store .comment2, .list .withimage .comment, .applist .comment, .applist .price {
 	font-size: 12px;
 	color: #7f7f7f;
 	display: block;
@@ -592,7 +594,12 @@ li:last-child.store .image, .store:last-child a {
 	overflow: hidden;
 }
 .store .comment, .list .withimage .comment {
-	margin: 16px 0 0 95px;
+	margin: 40px 0 0 10px;
+	width: 100%;
+}
+.store .comment2 {
+	margin: 10px 0 0 10px;
+	width: 100%;
 }
 .applist .comment {
 	position: absolute;

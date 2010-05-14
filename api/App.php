@@ -304,6 +304,9 @@ class ChiPhoneLoginPage extends CerberusPageExtension {
 class ChiPhoneTicketsPage extends CerberusPageExtension {
 	private $_TPL_PATH = '';
 	
+	const VIEW_TICKET_OVERVIEW = 'mail_overview';
+	const VIEW_TICKET_WORKFLOW = 'mail_workflow';
+	
 	public function __construct($manifest) {
 		parent::__construct($manifest);
 		$this->_TPL_PATH = dirname(dirname(__FILE__)) . '/templates/';
@@ -311,6 +314,7 @@ class ChiPhoneTicketsPage extends CerberusPageExtension {
 	
 	public function isVisible() { return true; }
 	public function render() {
+		$translate = DevblocksPlatform::getTranslationService();
 		$tpl = DevblocksPlatform::getTemplateService();
 		$response = DevblocksPlatform::getHttpResponse();
 		// are we displaying the main home page?
@@ -319,16 +323,50 @@ class ChiPhoneTicketsPage extends CerberusPageExtension {
 		array_shift($path); // iphone
 		array_shift($path); // tickets
 		$action = array_shift($path); // current action
-		$id = array_shift($path); // ticket id
+		
+		
+		$active_worker = CerberusApplication::getActiveWorker();
+		
+		$memberships = $active_worker->getMemberships();
 		
 		switch($action) {
 			case 'overview':
+				$page = array_shift($path); // page
+				
+				$defaults = new C4_AbstractViewModel();
+				$defaults->class_name = 'View_Ticket_iPhone';
+				$defaults->id = self::VIEW_TICKET_OVERVIEW;
+				$defaults->name = $translate->_('crm.tab.title');
+				$defaults->renderSortBy = SearchFields_Ticket::TICKET_UPDATED_DATE;
+				$defaults->renderSortAsc = 0;
+				$defaults->renderLimit = 10;
+				
+				$view = C4_AbstractViewLoader::getView(self::VIEW_TICKET_OVERVIEW, $defaults);
+				
+				$view->params = array(
+					SearchFields_Ticket::TICKET_CLOSED => new DevblocksSearchCriteria(SearchFields_Ticket::TICKET_CLOSED,'=',CerberusTicketStatus::OPEN),
+					SearchFields_Ticket::TICKET_WAITING => new DevblocksSearchCriteria(SearchFields_Ticket::TICKET_WAITING,'=',0),
+					SearchFields_Ticket::TICKET_TEAM_ID => new DevblocksSearchCriteria(SearchFields_Ticket::TICKET_TEAM_ID,'in',array_keys($memberships)),
+				);
+				if(isset($page)) {
+					$view->renderPage = $page;
+				}
+				
+				C4_AbstractViewLoader::setView($view->id, $view);
+				
+				$uri = "tickets/overview";
+				$tpl->assign('uri', $uri);
+				
+				$tpl->assign('view', $view);
 				$tpl->display('file:' . $this->_TPL_PATH . 'tickets/overview.tpl');
 				break;
 			case 'display':
+				$id = array_shift($path); // ticket id
 				$tab_manifests = DevblocksPlatform::getExtensions('cerberusweb.iphone.ticket.display.tab', false);
 				$tpl->assign('tab_manifests', $tab_manifests);
-				$tpl->assign('ticket_id', $id);
+
+				$ticket = DAO_Ticket::getTicket($id);
+				
 				$selected_tab = array_shift($path);
 				$selected_tab = null != $selected_tab ? $selected_tab : 'conversation'; // tab
 				
@@ -339,6 +377,7 @@ class ChiPhoneTicketsPage extends CerberusPageExtension {
 					}
 				}
 				
+				$tpl->assign('ticket', $ticket);
 				$tpl->assign('tab', $tab);
 				$tpl->assign('selected_tab', $selected_tab);
 				$tpl->display('file:' . $this->_TPL_PATH . 'tickets/display.tpl');
@@ -352,14 +391,6 @@ class ChiPhoneTicketsPage extends CerberusPageExtension {
 			default:
 				break;
 		}
-	}
-	
-	public function overviewAction() {
-		
-	}
-	
-	public function displayAction() {
-		
 	}
 	
 	/**
@@ -554,7 +585,7 @@ class ChConversationiPhoneTicketDisplayTab extends Extension_iPhoneTicketDisplay
 		$tpl->assign('expand_all', $expand_all);
 		
 		$ticket = DAO_Ticket::getTicket($id);
-		$tpl->assign('ticket', $ticket);
+
 		$tpl->assign('requesters', $ticket->getRequesters());
 
 		// Drafts
@@ -701,13 +732,105 @@ class ChOtheriPhoneTicketDisplayTab extends Extension_iPhoneTicketDisplayTab {
 	
 	public function __construct($manifest) {
 		$this->DevblocksExtension($manifest);
-		$this->_TPL_PATH = dirname(dirname(__FILE__)) . '/templates/';
+		$this->_TPL_PATH = dirname(dirname(__FILE__)) . '/templates/tickets/';
+	}
+	
+	function showTab() {
+		
+		$tpl = DevblocksPlatform::getTemplateService();
+		$response = DevblocksPlatform::getHttpResponse();
+		// are we displaying the main home page?
+		
+		$path = $response->path;
+		
+		array_shift($path); // iphone
+//		array_shift($path); // activity
+		array_shift($path); // opportunities
+		$action = array_shift($path); // current action
+		$id = array_shift($path); // ticket id
+		array_shift($path); // other
+		$sub_tab = array_shift($path); // sub tab
+		
+		$tab_manifests = DevblocksPlatform::getExtensions('cerberusweb.iphone.ticket.other.tab', false);
+		$tpl->assign('tab_manifests', $tab_manifests);
+		
+//		var_dump($tab_manifests);
+//		var_dump($sub_tab);
+		$tpl->assign('opp_id', $id);
+					
+		foreach($tab_manifests as $tab_mft)
+		{
+			if($sub_tab==$tab_mft->params['uri']) {
+				$tab = DevblocksPlatform::getExtension($tab_mft->id, true);
+			}
+		}
+		
+		$tpl->assign('sub_tab', $tab);
+		$tpl->display('file:' . $this->_TPL_PATH . 'display/other.tpl');
+	}
+
+};
+
+class ChMailHistoryiPhoneTicketDisplayTab extends Extension_iPhoneTicketDisplayTab {
+	private $_TPL_PATH = '';
+	
+	public function __construct($manifest) {
+		$this->DevblocksExtension($manifest);
+		$this->_TPL_PATH = dirname(dirname(__FILE__)) . '/templates/tickets/';
 	}
 	
 	function showTab() {
 		$tpl = DevblocksPlatform::getTemplateService();
+		$response = DevblocksPlatform::getHttpResponse();
+		$translate = DevblocksPlatform::getTranslationService();
+		// are we displaying the main home page?
 		
-		$tpl->display('file:' . $this->_TPL_PATH . 'tickets/display/other.tpl');
+		$path = $response->path;
+		
+		array_shift($path); // iphone
+		array_shift($path); // tickets
+		$action = array_shift($path); // current action (display)
+		$id = array_shift($path); // ticket id
+		array_shift($path); // other
+		$sub_tab = array_shift($path); // mailhistory
+		$page = array_shift($path); // page
+		$ticket = DAO_Ticket::getTicket($id);
+
+		$defaults = new C4_AbstractViewModel();
+		$defaults->class_name = 'View_Ticket_iPhone';
+		$defaults->id = 'iphone_opp_contact_history';
+		$defaults->name = $translate->_('addy_book.history.view.title');
+		$defaults->view_columns = array(
+			SearchFields_Ticket::TICKET_LAST_ACTION_CODE,
+			SearchFields_Ticket::TICKET_CREATED_DATE,
+			SearchFields_Ticket::TICKET_TEAM_ID,
+			SearchFields_Ticket::TICKET_CATEGORY_ID,
+		);
+
+		$defaults->renderLimit = 10;
+		$defaults->renderSortBy = SearchFields_Ticket::TICKET_CREATED_DATE;
+		$defaults->renderSortAsc = false;
+		
+		
+		$view = C4_AbstractViewLoader::getView('iphone_opp_contact_history', $defaults);
+
+		$params[SearchFields_Ticket::REQUESTER_ADDRESS] = new DevblocksSearchCriteria(SearchFields_Ticket::REQUESTER_ADDRESS, '=', $address);
+		$searchView->params = $params;
+		
+		if(isset($page)) {
+			$view->renderPage = $page;
+		}
+		
+		C4_AbstractViewLoader::setView($view->id, $view);
+		
+		$uri = "tickets/display/$id/other/mailhistory";
+		$tpl->assign('uri', $uri);
+		
+		
+		$tpl->assign('view', $view);
+		$tpl->assign('tickets', $tickets);
+		
+		$tpl->display('file:' . $this->_TPL_PATH . 'display/sub_tabs/mailhistory.tpl');
 	}
 };
 
@@ -874,7 +997,6 @@ if(class_exists('DAO_CrmOpportunity', true)):
 			$path = $response->path;
 			
 			array_shift($path); // iphone
-//			array_shift($path); // activity
 			array_shift($path); // opportunities
 			$action = array_shift($path); // current action
 			$id = array_shift($path); // opp id
@@ -884,8 +1006,6 @@ if(class_exists('DAO_CrmOpportunity', true)):
 			$tab_manifests = DevblocksPlatform::getExtensions('cerberusweb.iphone.opportunity.other.tab', false);
 			$tpl->assign('tab_manifests', $tab_manifests);
 			
-//			var_dump($tab_manifests);
-			var_dump($sub_tab);
 			$tpl->assign('opp_id', $id);
 						
 			foreach($tab_manifests as $tab_mft)
@@ -895,7 +1015,7 @@ if(class_exists('DAO_CrmOpportunity', true)):
 				}
 			}
 			
-			$tpl->assign('sub_tab', $tab);	
+			$tpl->assign('sub_tab', $tab);
 			$tpl->display('file:' . $this->_TPL_PATH . 'display/other.tpl');
 		}
 	};
@@ -921,7 +1041,6 @@ if(class_exists('DAO_CrmOpportunity', true)):
 			$id = array_shift($path); // opp id
 			array_shift($path); // other
 			$sub_tab = array_shift($path); // tasks
-//			DAO_Ticket
 			
 			$tpl->display('file:' . $this->_TPL_PATH . 'display/sub_tabs/tasks.tpl');
 		}
@@ -938,6 +1057,7 @@ if(class_exists('DAO_CrmOpportunity', true)):
 		function showTab() {
 			$tpl = DevblocksPlatform::getTemplateService();
 			$response = DevblocksPlatform::getHttpResponse();
+			$translate = DevblocksPlatform::getTranslationService();
 			// are we displaying the main home page?
 			
 			$path = $response->path;
@@ -947,14 +1067,43 @@ if(class_exists('DAO_CrmOpportunity', true)):
 			$action = array_shift($path); // current action (display)
 			$id = array_shift($path); // opp id
 			array_shift($path); // other
-			$sub_tab = array_shift($path); // tasks
+			$sub_tab = array_shift($path); // mailhistory
+			$page = array_shift($path); // page
 			
 			$address = $tpl->getVariable('address')->value;
-			var_dump(DAO_Address::getByEmail($address->email));
-//			$criteria = new DevblocksSearchCriteria(SearchFields_Ticket::REQUESTER_ADDRESS, '=', $address->email);
-			var_dump($criteria);
+//			$address = DAO_Address::getByEmail($address->email);
+
+			$defaults = new C4_AbstractViewModel();
+			$defaults->class_name = 'View_Ticket_iPhone';
+			$defaults->id = 'iphone_opp_contact_history';
+			$defaults->name = $translate->_('addy_book.history.view.title');
+			$defaults->view_columns = array(
+				SearchFields_Ticket::TICKET_LAST_ACTION_CODE,
+				SearchFields_Ticket::TICKET_CREATED_DATE,
+				SearchFields_Ticket::TICKET_TEAM_ID,
+				SearchFields_Ticket::TICKET_CATEGORY_ID,
+			);
+
+			$defaults->renderLimit = 10;
+			$defaults->renderSortBy = SearchFields_Ticket::TICKET_CREATED_DATE;
+			$defaults->renderSortAsc = false;
 			
-			$tpl->display('file:' . $this->_TPL_PATH . 'display/sub_tabs/tasks.tpl');
+			$view = C4_AbstractViewLoader::getView('iphone_opp_contact_history', $defaults);
+
+			$params[SearchFields_Ticket::REQUESTER_ADDRESS] = new DevblocksSearchCriteria(SearchFields_Ticket::REQUESTER_ADDRESS, '=', $address->email);
+			$view->params = $params;
+			if(isset($page)) {
+				$view->renderPage = $page;
+			}
+			
+			C4_AbstractViewLoader::setView($view->id, $view);
+			
+			$uri = "opportunities/display/$id/other/mailhistory";
+			$tpl->assign('uri', $uri);
+			$tpl->assign('view', $view);
+			$tpl->assign('tickets', $tickets);
+			
+			$tpl->display('file:' . $this->_TPL_PATH . 'display/sub_tabs/mailhistory.tpl');
 		}
 	};
 	
@@ -995,5 +1144,537 @@ if(class_exists('DAO_TimeTrackingActivity')):
 		}
 	};
 endif;
+
+
+
+class View_Ticket_iPhone extends C4_AbstractView {
+	const DEFAULT_ID = 'tickets_workspace';
+
+	function __construct() {
+		$this->id = self::DEFAULT_ID;
+		$this->name = 'Tickets';
+		$this->renderLimit = 10;
+		$this->renderSortBy = SearchFields_Ticket::TICKET_UPDATED_DATE;
+		$this->renderSortAsc = false;
+
+		$this->view_columns = array(
+			SearchFields_Ticket::TICKET_LAST_ACTION_CODE,
+			SearchFields_Ticket::TICKET_UPDATED_DATE,
+			SearchFields_Ticket::TICKET_TEAM_ID,
+			SearchFields_Ticket::TICKET_CATEGORY_ID,
+			SearchFields_Ticket::TICKET_SPAM_SCORE,
+		);
+	}
+
+	function getData() {
+		$objects = DAO_Ticket::search(
+			$this->view_columns,
+			$this->params,
+			$this->renderLimit,
+			$this->renderPage,
+			$this->renderSortBy,
+			$this->renderSortAsc,
+			$this->renderTotal
+		);
+		return $objects;
+	}
+
+	function render() {
+		$this->_sanitize();
+		
+		$tpl = DevblocksPlatform::getTemplateService();
+		$tpl->assign('id', $this->id);
+		
+		$view_path = dirname(dirname(__FILE__)) . '/templates/tickets/';
+		$tpl->assign('view_path',$view_path);
+		$tpl->assign('view', $this);
+
+		$visit = CerberusApplication::getVisit();
+
+		$results = self::getData();
+		$tpl->assign('results', $results);
+		
+		@$ids = array_keys($results[0]);
+		
+		$workers = DAO_Worker::getAll();
+		$tpl->assign('workers', $workers);
+
+		$teams = DAO_Group::getAll();
+		$tpl->assign('teams', $teams);
+
+		$buckets = DAO_Bucket::getAll();
+		$tpl->assign('buckets', $buckets);
+
+		$team_categories = DAO_Bucket::getTeams();
+		$tpl->assign('team_categories', $team_categories);
+
+		$custom_fields = DAO_CustomField::getBySource(ChCustomFieldSource_Ticket::ID);
+		$tpl->assign('custom_fields', $custom_fields);
+		
+		// Undo?
+		$last_action = View_Ticket::getLastAction($this->id);
+		$tpl->assign('last_action', $last_action);
+		if(!empty($last_action) && !is_null($last_action->ticket_ids)) {
+			$tpl->assign('last_action_count', count($last_action->ticket_ids));
+		}
+
+		$tpl->assign('timestamp_now', time());
+		
+		$tpl->assign('view_fields', $this->getColumns());
+		$tpl->display('file:' . $view_path . 'view.tpl');
+	}
+
+	function doResetCriteria() {
+		$active_worker = CerberusApplication::getActiveWorker(); /* @var $active_worker Model_Worker */
+		$active_worker_memberships = $active_worker->getMemberships();
+		
+		$this->params = array(
+			SearchFields_Ticket::TICKET_CLOSED => new DevblocksSearchCriteria(SearchFields_Ticket::TICKET_CLOSED,'=',0),
+			SearchFields_Ticket::TICKET_TEAM_ID => new DevblocksSearchCriteria(SearchFields_Ticket::TICKET_TEAM_ID,'in',array_keys($active_worker_memberships)), // censor
+		);
+		$this->renderPage = 0;
+	}
+	
+	function renderCriteria($field) {
+		$tpl = DevblocksPlatform::getTemplateService();
+		$tpl->assign('id', $this->id);
+
+		$tpl_path = APP_PATH . '/features/cerberusweb.core/templates/';
+
+		switch($field) {
+			case SearchFields_Ticket::TICKET_ID:
+			case SearchFields_Ticket::TICKET_MASK:
+			case SearchFields_Ticket::TICKET_SUBJECT:
+			case SearchFields_Ticket::TICKET_FIRST_WROTE:
+			case SearchFields_Ticket::TICKET_LAST_WROTE:
+			case SearchFields_Ticket::REQUESTER_ADDRESS:
+			case SearchFields_Ticket::TICKET_INTERESTING_WORDS:
+			case SearchFields_Ticket::ORG_NAME:
+				$tpl->display('file:' . $tpl_path . 'internal/views/criteria/__string.tpl');
+				break;
+
+			case SearchFields_Ticket::TICKET_FIRST_WROTE_SPAM:
+			case SearchFields_Ticket::TICKET_FIRST_WROTE_NONSPAM:
+				$tpl->display('file:' . $tpl_path . 'internal/views/criteria/__number.tpl');
+				break;
+					
+			case SearchFields_Ticket::TICKET_WAITING:
+			case SearchFields_Ticket::TICKET_DELETED:
+			case SearchFields_Ticket::TICKET_CLOSED:
+				$tpl->display('file:' . $tpl_path . 'internal/views/criteria/__bool.tpl');
+				break;
+					
+			case SearchFields_Ticket::TICKET_CREATED_DATE:
+			case SearchFields_Ticket::TICKET_UPDATED_DATE:
+			case SearchFields_Ticket::TICKET_DUE_DATE:
+				$tpl->display('file:' . $tpl_path . 'internal/views/criteria/__date.tpl');
+				break;
+					
+			case SearchFields_Ticket::TICKET_SPAM_TRAINING:
+				$tpl->display('file:' . $tpl_path . 'tickets/search/criteria/ticket_spam_training.tpl');
+				break;
+				
+			case SearchFields_Ticket::TICKET_SPAM_SCORE:
+				$tpl->display('file:' . $tpl_path . 'tickets/search/criteria/ticket_spam_score.tpl');
+				break;
+
+			case SearchFields_Ticket::TICKET_LAST_ACTION_CODE:
+				$tpl->display('file:' . $tpl_path . 'tickets/search/criteria/ticket_last_action.tpl');
+				break;
+
+			case SearchFields_Ticket::TICKET_NEXT_WORKER_ID:
+			case SearchFields_Ticket::TICKET_LAST_WORKER_ID:
+				$workers = DAO_Worker::getAll();
+				$tpl->assign('workers', $workers);
+				$tpl->display('file:' . $tpl_path . 'internal/views/criteria/__worker.tpl');
+				break;
+					
+			case SearchFields_Ticket::TICKET_TEAM_ID:
+				$teams = DAO_Group::getAll();
+				$tpl->assign('teams', $teams);
+
+				$team_categories = DAO_Bucket::getTeams();
+				$tpl->assign('team_categories', $team_categories);
+
+				$tpl->display('file:' . $tpl_path . 'tickets/search/criteria/ticket_team.tpl');
+				break;
+
+			case SearchFields_Ticket::FULLTEXT_MESSAGE_CONTENT:
+				$tpl->display('file:' . $tpl_path . 'internal/views/criteria/__fulltext.tpl');
+				break;
+				
+			default:
+				// Custom Fields
+				if('cf_' == substr($field,0,3)) {
+					$this->_renderCriteriaCustomField($tpl, substr($field,3));
+				} else {
+					echo ' ';
+				}
+				break;
+		}
+	}
+
+	function renderCriteriaParam($param) {
+		$field = $param->field;
+		$values = !is_array($param->value) ? array($param->value) : $param->value;
+
+		switch($field) {
+			case SearchFields_Ticket::TICKET_LAST_WORKER_ID:
+			case SearchFields_Ticket::TICKET_NEXT_WORKER_ID:
+				$workers = DAO_Worker::getAll();
+				$strings = array();
+
+				foreach($values as $val) {
+					if(empty($val))
+					$strings[] = "Nobody";
+					elseif(!isset($workers[$val]))
+					continue;
+					else
+					$strings[] = $workers[$val]->getName();
+				}
+				echo implode(", ", $strings);
+				break;
+
+			case SearchFields_Ticket::TICKET_TEAM_ID:
+				$teams = DAO_Group::getAll();
+				$strings = array();
+
+				foreach($values as $val) {
+					if(!isset($teams[$val]))
+					continue;
+
+					$strings[] = $teams[$val]->name;
+				}
+				echo implode(", ", $strings);
+				break;
+					
+			case SearchFields_Ticket::TICKET_CATEGORY_ID:
+				$buckets = DAO_Bucket::getAll();
+				$strings = array();
+
+				foreach($values as $val) {
+					if(0==$val) {
+						$strings[] = "Inbox";
+					} elseif(!isset($buckets[$val])) {
+						continue;
+					} else {
+						$strings[] = $buckets[$val]->name;
+					}
+				}
+				echo implode(", ", $strings);
+				break;
+
+			case SearchFields_Ticket::TICKET_LAST_ACTION_CODE:
+				$strings = array();
+
+				foreach($values as $val) {
+					switch($val) {
+						case 'O':
+							$strings[] = "New Ticket";
+							break;
+						case 'R':
+							$strings[] = "Customer Reply";
+							break;
+						case 'W':
+							$strings[] = "Worker Reply";
+							break;
+					}
+				}
+				echo implode(", ", $strings);
+				break;
+
+			case SearchFields_Ticket::TICKET_SPAM_TRAINING:
+				$strings = array();
+
+				foreach($values as $val) {
+					switch($val) {
+						case 'S':
+							$strings[] = "Spam";
+							break;
+						case 'N':
+							$strings[] = "Not Spam";
+							break;
+						default:
+							$strings[] = "Not Trained";
+							break;
+					}
+				}
+				echo implode(", ", $strings);
+				break;
+
+			default:
+				parent::renderCriteriaParam($param);
+				break;
+		}
+	}
+
+	static function getFields() {
+		return SearchFields_Ticket::getFields();
+	}
+
+	static function getSearchFields() {
+		$fields = self::getFields();
+		unset($fields[SearchFields_Ticket::TICKET_CATEGORY_ID]);
+		unset($fields[SearchFields_Ticket::TICKET_UNLOCK_DATE]);
+		return $fields;
+	}
+
+	static function getColumns() {
+		$fields = self::getFields();
+		unset($fields[SearchFields_Ticket::REQUESTER_ID]);
+		unset($fields[SearchFields_Ticket::REQUESTER_ADDRESS]);
+		unset($fields[SearchFields_Ticket::TICKET_UNLOCK_DATE]);
+		unset($fields[SearchFields_Ticket::TICKET_INTERESTING_WORDS]);
+		return $fields;
+	}
+
+	function doSetCriteria($field, $oper, $value) {
+		$criteria = null;
+
+		switch($field) {
+			case SearchFields_Ticket::TICKET_ID:
+			case SearchFields_Ticket::TICKET_MASK:
+			case SearchFields_Ticket::TICKET_SUBJECT:
+			case SearchFields_Ticket::TICKET_FIRST_WROTE:
+			case SearchFields_Ticket::TICKET_LAST_WROTE:
+			case SearchFields_Ticket::REQUESTER_ADDRESS:
+			case SearchFields_Ticket::TICKET_INTERESTING_WORDS:
+			case SearchFields_Ticket::ORG_NAME:
+				// force wildcards if none used on a LIKE
+				if(($oper == DevblocksSearchCriteria::OPER_LIKE || $oper == DevblocksSearchCriteria::OPER_NOT_LIKE)
+				&& false === (strpos($value,'*'))) {
+					$value = '*'.$value.'*';
+				}
+				$criteria = new DevblocksSearchCriteria($field, $oper, $value);
+				break;
+
+			case SearchFields_Ticket::TICKET_WAITING:
+			case SearchFields_Ticket::TICKET_DELETED:
+			case SearchFields_Ticket::TICKET_CLOSED:
+				@$bool = DevblocksPlatform::importGPC($_REQUEST['bool'],'integer',1);
+				$criteria = new DevblocksSearchCriteria($field,$oper,$bool);
+				break;
+				
+			case SearchFields_Ticket::TICKET_FIRST_WROTE_SPAM:
+			case SearchFields_Ticket::TICKET_FIRST_WROTE_NONSPAM:
+				$criteria = new DevblocksSearchCriteria($field,$oper,$value);
+				break;
+
+			case SearchFields_Ticket::TICKET_CREATED_DATE:
+			case SearchFields_Ticket::TICKET_UPDATED_DATE:
+			case SearchFields_Ticket::TICKET_DUE_DATE:
+				@$from = DevblocksPlatform::importGPC($_REQUEST['from'],'string','');
+				@$to = DevblocksPlatform::importGPC($_REQUEST['to'],'string','');
+
+				if(empty($from) || (!is_numeric($from) && @false === strtotime(str_replace('.','-',$from))))
+					$from = 0;
+					
+				if(empty($to) || (!is_numeric($to) && @false === strtotime(str_replace('.','-',$to))))
+					$to = 'now';
+
+				$criteria = new DevblocksSearchCriteria($field,$oper,array($from,$to));
+				break;
+
+			case SearchFields_Ticket::TICKET_SPAM_SCORE:
+				@$score = DevblocksPlatform::importGPC($_REQUEST['score'],'integer',null);
+				if(!is_null($score) && is_numeric($score)) {
+					$criteria = new DevblocksSearchCriteria($field,$oper,intval($score)/100);
+				}
+				break;
+
+			case SearchFields_Ticket::TICKET_SPAM_TRAINING:
+				$criteria = new DevblocksSearchCriteria($field,$oper,$value);
+				break;
+
+			case SearchFields_Ticket::TICKET_LAST_ACTION_CODE:
+				@$last_action_code = DevblocksPlatform::importGPC($_REQUEST['last_action'],'array',array());
+				$criteria = new DevblocksSearchCriteria($field,$oper,$last_action_code);
+				break;
+
+			case SearchFields_Ticket::TICKET_LAST_WORKER_ID:
+			case SearchFields_Ticket::TICKET_NEXT_WORKER_ID:
+				@$worker_id = DevblocksPlatform::importGPC($_REQUEST['worker_id'],'array',array());
+				$criteria = new DevblocksSearchCriteria($field,$oper,$worker_id);
+				break;
+				
+
+			case SearchFields_Ticket::TICKET_TEAM_ID:
+				@$team_ids = DevblocksPlatform::importGPC($_REQUEST['team_id'],'array');
+				@$bucket_ids = DevblocksPlatform::importGPC($_REQUEST['bucket_id'],'array');
+
+				if(!empty($team_ids))
+				$this->params[SearchFields_Ticket::TICKET_TEAM_ID] = new DevblocksSearchCriteria(SearchFields_Ticket::TICKET_TEAM_ID,$oper,$team_ids);
+				if(!empty($bucket_ids))
+				$this->params[SearchFields_Ticket::TICKET_CATEGORY_ID] = new DevblocksSearchCriteria(SearchFields_Ticket::TICKET_CATEGORY_ID,$oper,$bucket_ids);
+
+				break;
+				
+			case SearchFields_Ticket::FULLTEXT_MESSAGE_CONTENT:
+				@$scope = DevblocksPlatform::importGPC($_REQUEST['scope'],'string','expert');
+				$criteria = new DevblocksSearchCriteria($field,DevblocksSearchCriteria::OPER_FULLTEXT,array($value,$scope));
+				break;
+				
+			default:
+				// Custom Fields
+				if(substr($field,0,3)=='cf_') {
+					$criteria = $this->_doSetCriteriaCustomField($field, substr($field,3));
+				}
+				break;
+		}
+
+		if(!empty($criteria)) {
+			$this->params[$field] = $criteria;
+			$this->renderPage = 0;
+		}
+	}
+
+	/**
+	 * @param array
+	 * @param array
+	 * @return boolean
+	 * [TODO] Find a better home for this?
+	 */
+	function doBulkUpdate($filter, $filter_param, $data, $do, $ticket_ids=array()) {
+		@set_time_limit(600);
+	  
+		// Make sure we have checked items if we want a checked list
+		if(0 == strcasecmp($filter,"checks") && empty($ticket_ids))
+			return;
+		
+		$rule = new Model_GroupInboxFilter();
+		$rule->actions = $do;
+	  
+		$params = $this->params;
+
+		if(empty($filter)) {
+			$data[] = '*'; // All, just to permit a loop in foreach($data ...)
+		}
+
+		switch($filter) {
+			default:
+			case 'subject':
+			case 'sender':
+			case 'header':
+				if(is_array($data))
+				foreach($data as $v) {
+					$new_params = array();
+					$do_header = null;
+		    
+					switch($filter) {
+						case 'subject':
+							$new_params = array(
+								new DevblocksSearchCriteria(SearchFields_Ticket::TICKET_SUBJECT,DevblocksSearchCriteria::OPER_LIKE,$v)
+							);
+							$do_header = 'subject';
+							$ticket_ids = array();
+							break;
+						case 'sender':
+							$new_params = array(
+								new DevblocksSearchCriteria(SearchFields_Ticket::SENDER_ADDRESS,DevblocksSearchCriteria::OPER_LIKE,$v)
+							);
+							$do_header = 'from';
+							$ticket_ids = array();
+							break;
+						case 'header':
+							$new_params = array(
+								// [TODO] It will eventually come up that we need multiple header matches (which need to be pair grouped as OR)
+								new DevblocksSearchCriteria(SearchFields_Ticket::TICKET_MESSAGE_HEADER,DevblocksSearchCriteria::OPER_EQ,$filter_param),
+								new DevblocksSearchCriteria(SearchFields_Ticket::TICKET_MESSAGE_HEADER_VALUE,DevblocksSearchCriteria::OPER_EQ,$v)
+							);
+							$ticket_ids = array();
+							break;
+					}
+
+					$new_params = array_merge($new_params, $params);
+					$pg = 0;
+
+					if(empty($ticket_ids)) {
+						do {
+							list($tickets,$null) = DAO_Ticket::search(
+								array(),
+								$new_params,
+								100,
+								$pg++,
+								SearchFields_Ticket::TICKET_ID,
+								true,
+								false
+							);
+							 
+							$ticket_ids = array_merge($ticket_ids, array_keys($tickets));
+							 
+						} while(!empty($tickets));
+					}
+			   
+					$batch_total = count($ticket_ids);
+					for($x=0;$x<=$batch_total;$x+=200) {
+						$batch_ids = array_slice($ticket_ids,$x,200);
+						$rule->run($batch_ids);
+						unset($batch_ids);
+					}
+				}
+
+				break;
+		}
+
+		unset($ticket_ids);
+	}
+
+	static function createSearchView() {
+		$active_worker = CerberusApplication::getActiveWorker();
+		$memberships = $active_worker->getMemberships();
+		$translate = DevblocksPlatform::getTranslationService();
+		
+		$view = new View_Ticket();
+		$view->id = CerberusApplication::VIEW_SEARCH;
+		$view->name = $translate->_('common.search_results');
+		$view->view_columns = array(
+			SearchFields_Ticket::TICKET_LAST_ACTION_CODE,
+			SearchFields_Ticket::TICKET_UPDATED_DATE,
+			SearchFields_Ticket::TICKET_TEAM_ID,
+			SearchFields_Ticket::TICKET_CATEGORY_ID,
+			SearchFields_Ticket::TICKET_SPAM_SCORE,
+		);
+		$view->params = array(
+			SearchFields_Ticket::TICKET_CLOSED => new DevblocksSearchCriteria(SearchFields_Ticket::TICKET_CLOSED,DevblocksSearchCriteria::OPER_EQ,0),
+			SearchFields_Ticket::TICKET_TEAM_ID => new DevblocksSearchCriteria(SearchFields_Ticket::TICKET_TEAM_ID,'in',array_keys($memberships)), // censor
+		);
+		$view->renderLimit = 100;
+		$view->renderPage = 0;
+		$view->renderSortBy = null; // SearchFields_Ticket::TICKET_UPDATED_DATE
+		$view->renderSortAsc = 0;
+
+		return $view;
+	}
+
+	static public function setLastAction($view_id, Model_TicketViewLastAction $last_action=null) {
+		$visit = CerberusApplication::getVisit(); /* @var $visit CerberusVisit */
+		$view_last_actions = $visit->get(CerberusVisit::KEY_VIEW_LAST_ACTION,array());
+	  
+		if(!is_null($last_action) && !empty($last_action->ticket_ids)) {
+			$view_last_actions[$view_id] = $last_action;
+		} else {
+			if(isset($view_last_actions[$view_id])) {
+				unset($view_last_actions[$view_id]);
+			}
+		}
+	  
+		$visit->set(CerberusVisit::KEY_VIEW_LAST_ACTION,$view_last_actions);
+	}
+
+	/**
+	 * @param string $view_id
+	 * @return Model_TicketViewLastAction
+	 */
+	static public function getLastAction($view_id) {
+		$visit = CerberusApplication::getVisit(); /* @var $visit CerberusVisit */
+		$view_last_actions = $visit->get(CerberusVisit::KEY_VIEW_LAST_ACTION,array());
+		return (isset($view_last_actions[$view_id]) ? $view_last_actions[$view_id] : null);
+	}
+
+	static public function clearLastActions() {
+		$visit = CerberusApplication::getVisit(); /* @var $visit CerberusVisit */
+		$visit->set(CerberusVisit::KEY_VIEW_LAST_ACTION,array());
+	}
+};
 
 ?>

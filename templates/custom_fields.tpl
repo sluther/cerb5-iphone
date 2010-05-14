@@ -17,7 +17,9 @@
 				</li>
 				
 			{elseif $f->type=='X'}
-					<li class="textbox">{foreach from=$f->options item=opt}<span class="name">{$opt}</span><input type="checkbox" name="field_{$f_id}[]" value="{$opt|escape}" {if isset($custom_field_values.$f_id.$opt)}checked="checked"{/if}><br>{/foreach}</li>
+				{foreach from=$f->options item=opt}
+					<li class="checkbox"><span class="name">{$opt}</span><input type="checkbox" name="field_{$f_id}[]" value="{$opt|escape}" {if isset($custom_field_values.$f_id.$opt)}checked="checked"{/if}><br></li>
+				{/foreach}
 			{elseif $f->type=='D'}
 				<li class="select">
 					<select name="field_{$f_id}">
