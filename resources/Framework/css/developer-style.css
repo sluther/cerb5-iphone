@@ -594,11 +594,11 @@ li:last-child.store .image, .store:last-child a {
 	overflow: hidden;
 }
 .store .comment, .list .withimage .comment {
-	margin: 40px 0 0 10px;
+	margin: 35px 0 0 15px;
 	width: 100%;
 }
 .store .comment2 {
-	margin: 10px 0 0 10px;
+	margin: 2px 0 0 15px;
 	width: 100%;
 }
 .applist .comment {

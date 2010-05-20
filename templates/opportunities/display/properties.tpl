@@ -1,5 +1,9 @@
-
-<form>
+<form action="{devblocks_url}{/devblocks_url}" method="POST">
+	<input type="hidden" name="c" value="iphone">
+	<input type="hidden" name="a" value="opportunities">
+	<input type="hidden" name="pageAction" value="saveProperties">
+	
+	<input type="hidden" name="opp_id" value="{$opp->id}">
 	<span class="graytitle">Properties</span>
 	<ul class="pageitem">
 		<li class="smallfield">
@@ -8,7 +12,7 @@
 		</li>
 		<li class="smallfield">
 			<span class="name">Title</span>
-			<input type="text" value="{$opp->name}" name="title" />
+			<input type="text" value="{$opp->name}" name="name" />
 		</li>
 		<li class="smallfield">
 			<span class="name">Amount</span>
