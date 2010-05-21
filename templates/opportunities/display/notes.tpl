@@ -8,26 +8,6 @@
 			</p>
 		</li>
 		{/foreach}
-		<li class="textbox"><span class="header">Darren Sugita</span>
-			<p>
-				That makes no sense, Scott...
-			</p>
-		</li>
-		<li class="textbox"><span class="header">Joe Geck</span>
-			<p>
-				I think Scott was clear on what he said.
-			</p>
-		</li>
-		<li class="textbox"><span class="header">Dan Hildebrandt</span>
-			<p>
-				Actually, Darren is right. It makes no sense at all!
-			</p>
-		</li>
-		<li class="textbox"><span class="header">Jeff Standen</span>
-			<p>
-				I understand what Scott is saying, but I completely disagree with him!
-			</p>
-		</li>
 	</ul>
 	<span class="graytitle">Add Note</span>
 	<form>

@@ -16,7 +16,7 @@
 			{section name=row loop=$sections}
 				<span class="comment{if $smarty.section.row.index > 0}2{/if}">
 					{foreach from=array_slice($view->view_columns, $smarty.section.row.index * $maxcols, $maxcols) item=column}
-						{$view_fields.$column->db_label} {$task.$column}
+						{$view_fields.$column->db_label}: {$task.$column}
 					{/foreach}
 				</span>
 			{/section}

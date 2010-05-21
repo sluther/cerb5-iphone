@@ -11,7 +11,7 @@
     
     <class_loader>
 		<file path="api/App.php">
-		    <class name="Extension_iPhoneTicketDisplayTab" />
+		    <class name="Extension_iPhoneDisplayTab" />
 			<class name="Extension_iPhoneActivityPage" />
 		</file>
 	</class_loader>
@@ -28,7 +28,9 @@
 				<param key="uri" value="iphone" />
 			</params>
 		</extension>
-
+        
+        <!-- Pages -->
+        
 		<extension point="cerberusweb.iphone.page">
 			<id>iphone.home</id>
 			<name>iPhone Home Page</name>
@@ -84,6 +86,54 @@
 				<param key="uri" value="research" />
 			</params>
 		</extension>
+        <extension point="cerberusweb.iphone.page">
+			<id>iphone.opportunities</id>
+			<name>Opportunities iPhone Page</name>
+			<class>
+				<file>api/App.php</file>
+				<name>ChiPhoneOpportunitiesPage</name>
+			</class>
+			<params>
+				<param key="uri" value="opportunities" />
+				<param key="title" value="Opportunities" />
+			</params>
+		</extension>
+        <extension point="cerberusweb.iphone.page">
+			<id>iphone.feedback</id>
+			<name>Feedback</name>
+			<class>
+				<file>api/App.php</file>
+				<name>ChiPhoneFeedbackPage</name>
+			</class>
+			<params>
+				<param key="uri" value="feedback" />
+				<param key="title" value="Feedback" />
+			</params>
+		</extension>
+        <extension point="cerberusweb.iphone.page">
+			<id>iphone.tasks</id>
+			<name>Tasks</name>
+			<class>
+				<file>api/App.php</file>
+				<name>ChiPhoneTasksPage</name>
+			</class>
+			<params>
+				<param key="uri" value="tasks" />
+				<param key="title" value="Tasks" />
+			</params>
+		</extension>
+        <extension point="cerberusweb.iphone.page">
+			<id>iphone.timetracking</id>
+			<name>Time Tracking Page</name>
+			<class>
+				<file>api/App.php</file>
+				<name>ChiPhoneTimeTrackingPage</name>
+			</class>
+			<params>
+				<param key="uri" value="timetracking" />
+				<param key="title" value="Time Tracking" />
+			</params>
+		</extension>
         
         <!-- Ticket Display Tabs -->
         
@@ -135,66 +185,12 @@
 				<param key="title" value="Mail History" />
 			</params>
 		</extension>
-        
-        <!-- Activity Pages -->
-        
-        <extension point="cerberusweb.iphone.page">
-			<id>iphone.opportunities</id>
-			<name>Opportunities iPhone Page</name>
-			<class>
-				<file>api/App.php</file>
-				<name>ChiPhoneOpportunitiesPage</name>
-			</class>
-			<params>
-				<param key="uri" value="opportunities" />
-				<param key="title" value="Opportunities" />
-			</params>
-		</extension>
-
-        <extension point="cerberusweb.iphone.page">
-			<id>iphone.feedback</id>
-			<name>Feedback</name>
-			<class>
-				<file>api/App.php</file>
-				<name>ChiPhoneFeedbackPage</name>
-			</class>
-			<params>
-				<param key="uri" value="feedback" />
-				<param key="title" value="Feedback" />
-			</params>
-		</extension>
-
-        <extension point="cerberusweb.iphone.page">
-			<id>iphone.tasks</id>
-			<name>Tasks</name>
-			<class>
-				<file>api/App.php</file>
-				<name>ChiPhoneTasksPage</name>
-			</class>
-			<params>
-				<param key="uri" value="tasks" />
-				<param key="title" value="Tasks" />
-			</params>
-		</extension>
-                 
-        <extension point="cerberusweb.iphone.page">
-			<id>iphone.timetracking</id>
-			<name>Time Tracking Page</name>
-			<class>
-				<file>api/App.php</file>
-				<name>ChiPhoneTimeTrackingPage</name>
-			</class>
-			<params>
-				<param key="uri" value="timetracking" />
-				<param key="title" value="Time Tracking" />
-			</params>
-		</extension>
 
         <!-- iPhone Opportunity Display Tabs -->
         
         <extension point="cerberusweb.iphone.opportunity.display.tab">
 			<id>notes.iphone.opportunity.display</id>
-			<name>Other Tab</name>
+			<name>Notes Tab</name>
 			<class>
 				<file>api/App.php</file>
 				<name>ChNotesiPhoneOpportunityDisplayTab</name>
@@ -204,7 +200,6 @@
 				<param key="title" value="Notes" />
 			</params>
 		</extension>
-        
         <extension point="cerberusweb.iphone.opportunity.display.tab">
 			<id>properties.iphone.opportunity.display</id>
 			<name>Other Tab</name>
@@ -217,7 +212,6 @@
 				<param key="title" value="Properties" />
 			</params>
 		</extension>
-
         <extension point="cerberusweb.iphone.opportunity.display.tab">
 			<id>other.iphone.opportunity.display</id>
 			<name>Other Tab</name>
@@ -230,7 +224,6 @@
 				<param key="title" value="Other" />
 			</params>
 		</extension>
-        
         <extension point="cerberusweb.iphone.opportunity.other.tab">
 			<id>tasks.other.iphone.opportunity</id>
 			<name>Tasks Tab</name>
@@ -243,7 +236,6 @@
 				<param key="title" value="Tasks" />
 			</params>
 		</extension>
-        
         <extension point="cerberusweb.iphone.opportunity.other.tab">
 			<id>mailhistory.other.iphone.opportunity</id>
 			<name>Mail History Tab</name>
@@ -254,6 +246,34 @@
 			<params>
 				<param key="uri" value="mailhistory" />
 				<param key="title" value="Mail History" />
+			</params>
+		</extension>
+        
+        
+        <!-- iPhone Task Display Tabs -->
+        
+        <extension point="cerberusweb.iphone.task.display.tab">
+			<id>notes.iphone.task.display</id>
+			<name>Notes Tab</name>
+			<class>
+				<file>api/App.php</file>
+				<name>ChNotesiPhoneTaskDisplayTab</name>
+			</class>
+			<params>
+				<param key="uri" value="notes" />
+				<param key="title" value="Notes" />
+			</params>
+		</extension>
+        <extension point="cerberusweb.iphone.task.display.tab">
+			<id>properties.iphone.task.display</id>
+			<name>Other Tab</name>
+			<class>
+				<file>api/App.php</file>
+				<name>ChPropertiesiPhoneTaskDisplayTab</name>
+			</class>
+			<params>
+				<param key="uri" value="properties" />
+				<param key="title" value="Properties" />
 			</params>
 		</extension>
 	</extensions>

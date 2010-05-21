@@ -12,7 +12,7 @@
 	
 	<input type="hidden" name="id" value="{$feedbackEntry->id}">
 	<div id="content">
-		<span class="graytitle">{$feedbackEntry->quote_text}</span>
+		<span class="graytitle">{$feedbackEntry->quote_text|escape}</span>
 		<ul class="pageitem">
 			<li class="smallfield">
 				<span class="name">Author E-mail</span>
@@ -32,7 +32,7 @@
 			</li>
 			<li class="textbox">
 				<span class="header">Quote</span>
-				<textarea name="quote" rows="4">{$feedbackEntry->quote_text}</textarea>
+				<textarea name="quote" rows="4">{$feedbackEntry->quote_text|escape}</textarea>
 			</li>
 			<li class="smallfield">
 				<span class="name">Link</span>

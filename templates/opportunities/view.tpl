@@ -11,12 +11,12 @@
 <div id="content">
 	<ul class="pageitem">
 		{foreach from=$opportunities item=opp}
-		<li class="menu"><a href="{devblocks_url}{/devblocks_url}iphone/opportunities/display/{$opp.o_id}/">
+		<li class="store"><a href="{devblocks_url}{/devblocks_url}iphone/opportunities/display/{$opp.o_id}/">
 			<span class="name">{$opp.o_name}</span><span class="arrow"></span></a>
 			{section name=row loop=$sections}
 				<span class="comment{if $smarty.section.row.index > 0}2{/if}">
 					{foreach from=array_slice($view->view_columns, $smarty.section.row.index * $maxcols, $maxcols) item=column}
-						{$view_fields.$column->db_label} {$opp.$column}
+						{$view_fields.$column->db_label}: {$opp.$column}
 					{/foreach}
 				</span>
 			{/section}

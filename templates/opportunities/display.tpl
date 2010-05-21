@@ -12,7 +12,7 @@
 	</div>
 </div>
 <div id="content">
-	<span class="graytitle">{$opp->name}</span>
+	<span class="graytitle">{$opp->name|escape}</span>
 	<ul class="pageitem">
 		<li class="textbox"><span class="header">{'common.status'|devblocks_translate|capitalize}</span>
 			{if $opp->is_closed}{if $opp->is_won}{'crm.opp.status.closed.won'|devblocks_translate|capitalize}{else}{'crm.opp.status.closed.lost'|devblocks_translate|capitalize}{/if}{else}{'crm.opp.status.open'|devblocks_translate|capitalize}{/if}

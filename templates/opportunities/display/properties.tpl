@@ -28,7 +28,7 @@
 			<span class="arrow"></span>
 		</li>		
 		<li class="select">
-			<select name="worker">
+			<select name="worker_id">
 				<option value="">- Select Worker -</option>
 				{foreach from=$workers item=worker}
 				<option value="{$worker->id}"{if $worker->id==$opp->worker_id} selected="selected"{/if}>{$worker->getName()}</option>

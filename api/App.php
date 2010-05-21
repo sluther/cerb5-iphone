@@ -681,37 +681,124 @@ class ChiPhoneTasksPage extends CerberusPageExtension {
 		array_shift($path); // iphone
 		array_shift($path); // tickets
 		$action = array_shift($path); // current action
-		
-
-			
-		$defaults = new C4_AbstractViewModel();
-		$defaults->class_name = 'View_Task_iPhone';
-		$defaults->id = self::VIEW_TASKS;
-		$defaults->name = $translate->_('crm.tab.title');
-		$defaults->renderSortBy = SearchFields_Task::DUE_DATE;
-		$defaults->renderSortAsc = 1;
-		$defaults->renderLimit = 10;
-
-		$view = C4_AbstractViewLoader::getView(self::VIEW_TASKS, $defaults);
-		
-		if(isset($page)) {
-			$view->renderPage = $page;
-		}
+		switch($action) {
+			case 'display':
+				$id = array_shift($path);
 				
-		C4_AbstractViewLoader::setView($view->id, $view);	
+				$task = DAO_Task::get($id);
+				
+				$tab_manifests = DevblocksPlatform::getExtensions('cerberusweb.iphone.task.display.tab', false);
+				$tpl->assign('tab_manifests', $tab_manifests);
+				
+				$workers = DAO_Worker::getAllActive();
+				$tpl->assign('workers', $workers);
+				
+				$selected_tab = array_shift($path);
+				$selected_tab = null != $selected_tab ? $selected_tab : 'notes'; // tab
+				
+				foreach($tab_manifests as $tab_mft)
+				{
+					if($selected_tab==$tab_mft->params['uri']) {
+						$tab = DevblocksPlatform::getExtension($tab_mft->id, true);
+					}
+				}
+				
+				$tpl->assign('task', $task);
+				$tpl->assign('tab', $tab);
+				$tpl->assign('selected_tab', $selected_tab);				
+				$tpl->display('file:' . $this->_TPL_PATH . 'tasks/display.tpl');
+				break;
+			default:
+				$defaults = new C4_AbstractViewModel();
+				$defaults->class_name = 'View_Task_iPhone';
+				$defaults->id = self::VIEW_TASKS;
+				$defaults->name = $translate->_('crm.tab.title');
+				$defaults->renderSortBy = SearchFields_Task::DUE_DATE;
+				$defaults->renderSortAsc = 1;
+				$defaults->renderLimit = 10;
 		
-//		$tpl->assign('response_uri', 'activity/tasks');
-		
-		$tpl->assign('view', $view);
-		
+				$view = C4_AbstractViewLoader::getView(self::VIEW_TASKS, $defaults);
+				
+				if(isset($page)) {
+					$view->renderPage = $page;
+				}
+						
+				C4_AbstractViewLoader::setView($view->id, $view);	
+				
+		//		$tpl->assign('response_uri', 'activity/tasks');
+				
+				$tpl->assign('view', $view);
+				
+				$active_worker = CerberusApplication::getActiveWorker();
+				
+				$tpl->display('file:' . $this->_TPL_PATH . 'tasks/home.tpl');
+				break;
+		}
+	}
+	
+	public function savePropertiesAction() {
+		@$id = DevblocksPlatform::importGPC($_REQUEST['id'],'integer','');
+		@$do_delete = DevblocksPlatform::importGPC($_REQUEST['do_delete'],'integer',0);
+
 		$active_worker = CerberusApplication::getActiveWorker();
 		
-		$tpl->display('file:' . $this->_TPL_PATH . 'tasks/home.tpl');
+		if(!empty($id) && !empty($do_delete)) { // delete
+			$task = DAO_Task::get($id);
+
+			// Check privs
+			if(($active_worker->hasPriv('core.tasks.actions.create') && $active_worker->id==$task->worker_id)
+				|| ($active_worker->hasPriv('core.tasks.actions.update_nobody') && empty($task->worker_id)) 
+				|| $active_worker->hasPriv('core.tasks.actions.update_all')) {
+					DAO_Task::delete($id);
+					DevblocksPlatform::redirect(new DevblocksHttpResponse(array('activity','tasks')));
+					exit;
+				}
+			
+		} else { // update
+			$fields = array();
+	
+			// Title
+			@$title = DevblocksPlatform::importGPC($_REQUEST['title'],'string','');
+			$fields[DAO_Task::TITLE] = !empty($title) ? $title : 'New Task';
+	
+			// Completed
+			@$completed = DevblocksPlatform::importGPC($_REQUEST['completed'],'integer',0);
+			
+			$fields[DAO_Task::IS_COMPLETED] = intval($completed);
+			
+			// [TODO] This shouldn't constantly update the completed date (it should compare)
+			if($completed)
+				$fields[DAO_Task::COMPLETED_DATE] = time();
+			else
+				$fields[DAO_Task::COMPLETED_DATE] = 0;
+			
+			// Updated Date
+			$fields[DAO_Task::UPDATED_DATE] = time();
+			
+			// Due Date
+			@$due_date = DevblocksPlatform::importGPC($_REQUEST['due_date'],'string','');
+			@$fields[DAO_Task::DUE_DATE] = empty($due_date) ? 0 : intval(strtotime($due_date));		
+	
+			// Worker
+			@$worker_id = DevblocksPlatform::importGPC($_REQUEST['worker_id'],'integer',0);
+			@$fields[DAO_Task::WORKER_ID] = intval($worker_id);
+			
+			// Save
+			if(!empty($id)) {
+				DAO_Task::update($id, $fields);
+			
+				// Custom field saves
+				@$field_ids = DevblocksPlatform::importGPC($_POST['field_ids'], 'array', array());
+				DAO_CustomFieldValue::handleFormPost(ChCustomFieldSource_Task::ID, $id, $field_ids);
+			}
+		}
+		
+		DevblocksPlatform::redirect(new DevblocksHttpResponse(array('iphone', 'tasks', 'display', $id, 'properties')));
 	}
 };
 
 
-abstract class Extension_iPhoneTicketDisplayTab extends DevblocksExtension {
+abstract class Extension_iPhoneDisplayTab extends DevblocksExtension {
 	function __construct($manifest) {
 		parent::__construct($manifest);
 	}
@@ -720,16 +807,8 @@ abstract class Extension_iPhoneTicketDisplayTab extends DevblocksExtension {
 	function saveTab() {}
 };
 
-abstract class Extension_iPhoneOpportunityDisplayTab extends DevblocksExtension {
-	function __construct($manifest) {
-		parent::__construct($manifest);
-	}
-	
-	function showTab() {}
-	function saveTab() {}
-};
 
-class ChConversationiPhoneTicketDisplayTab extends Extension_iPhoneTicketDisplayTab {
+class ChConversationiPhoneTicketDisplayTab extends Extension_iPhoneDisplayTab {
 	private $_TPL_PATH = '';
 	
 	public function __construct($manifest) {
@@ -875,7 +954,7 @@ class ChConversationiPhoneTicketDisplayTab extends Extension_iPhoneTicketDisplay
 	}
 };
 
-class ChPropertiesiPhoneTicketDisplayTab extends Extension_iPhoneTicketDisplayTab {
+class ChPropertiesiPhoneTicketDisplayTab extends Extension_iPhoneDisplayTab {
 	private $_TPL_PATH = '';
 	
 	public function __construct($manifest) {
@@ -895,7 +974,7 @@ class ChPropertiesiPhoneTicketDisplayTab extends Extension_iPhoneTicketDisplayTa
 	}
 };
 
-class ChOtheriPhoneTicketDisplayTab extends Extension_iPhoneTicketDisplayTab {
+class ChOtheriPhoneTicketDisplayTab extends Extension_iPhoneDisplayTab {
 	private $_TPL_PATH = '';
 	
 	public function __construct($manifest) {
@@ -939,7 +1018,7 @@ class ChOtheriPhoneTicketDisplayTab extends Extension_iPhoneTicketDisplayTab {
 
 };
 
-class ChMailHistoryiPhoneTicketDisplayTab extends Extension_iPhoneTicketDisplayTab {
+class ChMailHistoryiPhoneTicketDisplayTab extends Extension_iPhoneDisplayTab {
 	private $_TPL_PATH = '';
 	
 	public function __construct($manifest) {
@@ -1002,6 +1081,74 @@ class ChMailHistoryiPhoneTicketDisplayTab extends Extension_iPhoneTicketDisplayT
 	}
 };
 
+class ChNotesiPhoneTaskDisplayTab extends Extension_iPhoneDisplayTab {
+	private $_TPL_PATH = '';
+	
+	public function __construct($manifest) {
+		$this->DevblocksExtension($manifest);
+		$this->_TPL_PATH = dirname(dirname(__FILE__)) . '/templates/opportunities/';
+	}
+	
+	function showTab() {
+		$tpl = DevblocksPlatform::getTemplateService();
+		$response = DevblocksPlatform::getHttpResponse();
+		// are we displaying the main home page?
+			
+		$path = $response->path;
+		array_shift($path); // iphone
+		// array_shift($path); // activity
+		array_shift($path); // tasks
+		$action = array_shift($path); // current action
+		
+		$id = array_shift($path); // opp id
+
+		list($notes, $null) = DAO_Note::search(
+			array(
+				new DevblocksSearchCriteria(SearchFields_Note::SOURCE_EXT_ID,'=',ChNotesSource_Task::ID),
+				new DevblocksSearchCriteria(SearchFields_Note::SOURCE_ID,'=',$id),
+			),
+			25,
+			0,
+			DAO_Note::CREATED,
+			false,
+			false
+		);
+		// var_dump($notes);
+		$tpl->assign('notes', $notes);
+		$tpl->display('file:' . $this->_TPL_PATH . 'display/notes.tpl');
+	}
+};
+
+class ChPropertiesiPhoneTaskDisplayTab extends Extension_iPhoneDisplayTab {
+	private $_TPL_PATH = '';
+	
+	public function __construct($manifest) {
+		$this->DevblocksExtension($manifest);
+		$this->_TPL_PATH = dirname(dirname(__FILE__)) . '/templates/tasks/';
+	}
+	
+	function showTab() {
+		$tpl = DevblocksPlatform::getTemplateService();
+		$response = DevblocksPlatform::getHttpResponse();
+		// are we displaying the main home page?
+		
+		$path = $response->path;
+		array_shift($path); // iphone
+		// array_shift($path); // activity
+		array_shift($path); // opportunities
+		$action = array_shift($path); // current action
+		$id = array_shift($path); // opp id
+		
+		$custom_fields = DAO_CustomField::getBySource(ChCustomFieldSource_Task::ID);
+		$tpl->assign('custom_fields', $custom_fields);
+		
+		$custom_field_values = DAO_CustomFieldValue::getValuesBySourceIds(ChCustomFieldSource_Task::ID, $id);
+		if(isset($custom_field_values[$id]))
+			$tpl->assign('custom_field_values', $custom_field_values[$id]);
+		
+		$tpl->display('file:' . $this->_TPL_PATH . 'display/properties.tpl');
+	}
+};
 
 if(class_exists('DAO_CrmOpportunity', true)):
 	class ChiPhoneOpportunitiesPage extends CerberusPageExtension {
@@ -1136,7 +1283,7 @@ if(class_exists('DAO_CrmOpportunity', true)):
 		}
 	};
 
-	class ChNotesiPhoneOpportunityDisplayTab extends Extension_iPhoneOpportunityDisplayTab {
+	class ChNotesiPhoneOpportunityDisplayTab extends Extension_iPhoneDisplayTab {
 		private $_TPL_PATH = '';
 		
 		public function __construct($manifest) {
@@ -1174,7 +1321,7 @@ if(class_exists('DAO_CrmOpportunity', true)):
 		}
 	};
 	
-	class ChPropertiesiPhoneOpportunityDisplayTab extends Extension_iPhoneOpportunityDisplayTab {
+	class ChPropertiesiPhoneOpportunityDisplayTab extends Extension_iPhoneDisplayTab {
 		private $_TPL_PATH = '';
 		
 		public function __construct($manifest) {
@@ -1205,7 +1352,7 @@ if(class_exists('DAO_CrmOpportunity', true)):
 		}
 	};
 	
-	class ChOtheriPhoneOpportunityDisplayTab extends Extension_iPhoneOpportunityDisplayTab {
+	class ChOtheriPhoneOpportunityDisplayTab extends Extension_iPhoneDisplayTab {
 		private $_TPL_PATH = '';
 		
 		public function __construct($manifest) {
@@ -1244,7 +1391,7 @@ if(class_exists('DAO_CrmOpportunity', true)):
 		}
 	};
 	
-	class ChTasksiPhoneOpportunityDisplayTab extends Extension_iPhoneOpportunityDisplayTab {
+	class ChTasksiPhoneOpportunityDisplayTab extends Extension_iPhoneDisplayTab {
 		private $_TPL_PATH = '';
 		
 		public function __construct($manifest) {
@@ -1270,7 +1417,7 @@ if(class_exists('DAO_CrmOpportunity', true)):
 		}
 	};
 	
-	class ChMailHistoryiPhoneOpportunityDisplayTab extends Extension_iPhoneOpportunityDisplayTab {
+	class ChMailHistoryiPhoneOpportunityDisplayTab extends Extension_iPhoneDisplayTab {
 		private $_TPL_PATH = '';
 		
 		public function __construct($manifest) {
@@ -1388,6 +1535,16 @@ if(class_exists('DAO_CrmOpportunity', true)):
 			// Custom fields
 			$custom_fields = DAO_CustomField::getBySource(CrmCustomFieldSource_Opportunity::ID);
 			$tpl->assign('custom_fields', $custom_fields);
+			
+			if(strpos($_SERVER['HTTP_USER_AGENT'], 'iPhone') || strpos($_SERVER['HTTP_USER_AGENT'], 'iPod')):
+				 $maxcols = 1;
+			elseif(strpos($_SERVER['HTTP_USER_AGENT'], 'iPad')):
+				$maxcols = 4;
+			else:
+				$maxcols = 4;
+			endif;
+			
+			$tpl->assign('maxcols', $maxcols);
 			
 			$tpl->assign('view_fields', $this->getColumns());
 			$tpl->display('file:' . $view_path . 'view.tpl');
@@ -2756,7 +2913,7 @@ class View_Task_iPhone extends C4_AbstractView {
 		$custom_fields = DAO_CustomField::getBySource(ChCustomFieldSource_Task::ID);
 		$tpl->assign('custom_fields', $custom_fields);
 		
-				// get the user agent
+		// get the user agent
 		if(strpos($_SERVER['HTTP_USER_AGENT'], 'iPhone') || strpos($_SERVER['HTTP_USER_AGENT'], 'iPod')):
 			 $maxcols = 1;
 		elseif(strpos($_SERVER['HTTP_USER_AGENT'], 'iPad')):
